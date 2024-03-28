@@ -1,0 +1,175 @@
+
+# ECS Cluster
+resource "aws_ecs_cluster" "my_cluster" {
+  name = "fullstack-cluster"
+}
+
+resource "aws_ecs_task_definition" "fullstack" {
+  family             = "fullstack"
+  network_mode       = "awsvpc"  # Updated to use awsvpc network mode
+
+  container_definitions = jsonencode([
+    {
+      "name": "mysql",
+      "image": "docker.io/legin04/fullstack-mysql",
+      "cpu": 512,
+      "memory": 1024,
+      "portMappings": [
+        {
+          "containerPort": 3306,
+          "hostPort": 3306,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "value": "root"
+        },
+        {
+          "name": "MYSQL_DATABASE",
+          "value": "products"
+        },
+        {
+          "name": "MYSQL_USER",
+          "value": "root"
+        },
+        {
+          "name": "MYSQL_PASSWORD",
+          "value": "root"
+        }
+      ],
+      "mountPoints": [
+        {
+          "containerPath": "/var/lib/mysql",
+          "sourceVolume": "db_data"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost"
+        ],
+        "interval": 5,
+        "retries": 10
+      }
+    },
+    {
+      "name": "frontend",
+      "image": "legin04/fullstack-frontend",
+      "cpu": 256,
+      "memory": 512,
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "hostPort": 3000,
+          "protocol": "tcp"
+        }
+      ]
+    },
+    {
+      "name": "backend",
+      "image": "legin04/fullstack-backend",
+      "cpu": 256,
+      "memory": 512,
+      "portMappings": [
+        {
+          "containerPort": 4000,
+          "hostPort": 4000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "MYSQL_HOST",
+          "value": "mysql"
+        },
+        {
+          "name": "MYSQL_DATABASE",
+          "value": "products"
+        },
+        {
+          "name": "MYSQL_USER",
+          "value": "root"
+        },
+        {
+          "name": "MYSQL_PASSWORD",
+          "value": "root"
+        },
+        {
+          "name": "MYSQL_PORT",
+          "value": "3306"
+        }
+      ]
+    }
+  ])
+
+  volume {
+    name = "db_data"
+    host_path = "/var/lib/mysql"
+  }
+}
+
+
+resource "aws_ecs_service" "fullstack" {
+  name            = "fullstack-service"
+  cluster         = aws_ecs_cluster.my_cluster.id
+  task_definition = aws_ecs_task_definition.fullstack.arn
+  desired_count   = 1
+
+  depends_on = [aws_iam_role_policy_attachment.ecs_task_execution_role]
+
+  network_configuration {
+    subnets         = [aws_subnet.my_subnet.id]
+    security_groups = [aws_security_group.my_security_group.id]
+  }
+}
+
+
+
+resource "aws_vpc" "my_vpc" {
+  cidr_block = "10.0.0.0/16"
+}
+
+# Create a subnet within the VPC
+resource "aws_subnet" "my_subnet" {
+  vpc_id     = aws_vpc.my_vpc.id
+  cidr_block = "10.0.1.0/24"
+  availability_zone = "ap-south-1a"
+}
+
+# Create a security group
+resource "aws_security_group" "my_security_group" {
+  vpc_id = aws_vpc.my_vpc.id
+
+  // Add ingress rules to allow inbound traffic
+  ingress {
+    from_port   = 3306 // MySQL port
+    to_port     = 3306 // MySQL port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] // Allow traffic from anywhere (for demonstration purposes)
+  }
+
+  ingress {
+    from_port   = 3000 // Frontend port
+    to_port     = 3000 // Frontend port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] // Allow traffic from anywhere (for demonstration purposes)
+  }
+
+  ingress {
+    from_port   = 4000 // Backend port
+    to_port     = 4000 // Backend port
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] // Allow traffic from anywhere (for demonstration purposes)
+  }
+
+  // Add egress rule to allow outbound traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
