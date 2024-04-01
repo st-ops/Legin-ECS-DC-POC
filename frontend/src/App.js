@@ -15,7 +15,7 @@ class App extends Component {
   }
 
   getProducts = _ => {
-    fetch('http://localhost:4000/products')
+    fetch('http://localhost:4000/api/products')
     .then(response => response.json())
     .then(response => this.setState({ data: response.data }))
     .catch(err => console.error(err))
@@ -36,7 +36,7 @@ class App extends Component {
         ]}
         data={() =>
           new Promise((resolve, reject) => {
-            let url = 'http://localhost:4000/products'
+            let url = 'http://localhost:4000/api/products'
             fetch(url)
             .then(response => response.json())
             .then(result => {
@@ -49,7 +49,7 @@ class App extends Component {
         editable={{
           onRowAdd: newData =>
             new Promise((resolve, reject) => {
-              let url = 'http://localhost:4000/products/add?'
+              let url = 'http://localhost:4000/api/products/add?'
               url += 'name=' + newData.name
               url += '&price=' + newData.price
               url += '&amount=' + newData.amount
@@ -62,7 +62,7 @@ class App extends Component {
             }),
           onRowDelete: oldData =>
             new Promise((resolve, reject) => {
-              let url = 'http://localhost:4000/products/'
+              let url = 'http://localhost:4000/api/products/'
               url += oldData.product_id
               fetch(url)
               .then(result => {

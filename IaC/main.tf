@@ -29,8 +29,9 @@ resource "aws_ecs_service" "fullstack" {
   # deployment_maximum_percent = 100
 
   network_configuration {
-    subnets = "${data.aws_subnet.test_subnet.*.id}"
-    security_groups = [aws_security_group.my_security_group.id]
+    subnets = data.aws_subnets.test_subnet_ids.ids
+    assign_public_ip = true
+    #security_groups = [aws_security_group.my_security_group.id]
   }
 }
 
@@ -58,6 +59,10 @@ data "aws_subnets" "test_subnet_ids" {
 data "aws_subnet" "test_subnet" {
   count = "${length(data.aws_subnets.test_subnet_ids.ids)}"
   id    = "${tolist(data.aws_subnets.test_subnet_ids.ids)[count.index]}"
+}
+
+output "subnets" {
+  value = data.aws_subnets.test_subnet_ids.ids.*
 }
 
 
@@ -97,7 +102,7 @@ resource "aws_security_group" "my_security_group" {
 }
 
 resource "aws_cloudwatch_log_group" "fullstack" {
-  name = "/ecs/fullstack"
+  name = "/ecs/fullstack-td"
 
 }
 
